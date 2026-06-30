@@ -72,6 +72,12 @@ tbody tr:hover { background: #f8fafc; }
 .add-bidder-form input { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
 .history-item { font-size: 13px; color: var(--muted); padding: 4px 0; }
 .empty-state { text-align: center; padding: 40px; color: var(--muted); }
+.day-count { display: inline-flex; align-items: center; gap: 6px; }
+.day-count .num-days { font-weight: 700; }
+.day-count .running { color: var(--green); }
+.day-count .stopped { color: var(--muted); }
+.btn.toggle-running { border-color: var(--red); color: var(--red); }
+.btn.toggle-stopped { border-color: var(--green); color: var(--green); }
 </style>
 </head>
 <body>
@@ -100,8 +106,10 @@ tbody tr:hover { background: #f8fafc; }
           <th>Title</th>
           <th>Department</th>
           <th>Est. Value</th>
+          <th>Approved Budget</th>
           <th>Status</th>
           <th>Request Date</th>
+          <th>Days</th>
           <th>Winning Bidder</th>
           <th></th>
         </tr>
@@ -120,6 +128,7 @@ tbody tr:hover { background: #f8fafc; }
       <label>Department <input name="department" /></label>
       <label>Description <textarea name="description"></textarea></label>
       <label>Estimated Value (RM) <input name="est_value" type="number" step="0.01" /></label>
+      <label>Approved Budget (RM) <input name="approved_budget" type="number" step="0.01" /></label>
       <label>Request Date <input name="request_date" type="date" /></label>
       <div class="modal-actions">
         <button type="button" class="btn" id="cancelNewTender">Cancel</button>
@@ -156,6 +165,15 @@ const fmtDate = (v) => (v ? v : '-');
 const slug = (s) => s.replace(/[^a-zA-Z]/g, '');
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const nowStr = () => new Date().toISOString().slice(0, 16).replace('T', ' ');
+function computeDays(t) {
+  const acc = t.day_count_accumulated_days || 0;
+  if (t.day_count_running) {
+    const start = new Date(t.day_count_started_at || t.request_date).getTime();
+    const extra = Math.max(0, Math.floor((Date.now() - start) / 86400000));
+    return acc + extra;
+  }
+  return acc;
+}
 
 function nextStage(current) {
   const i = STAGES.indexOf(current);
@@ -179,6 +197,7 @@ function renderSummary() {
   const closed = tenders.filter((t) => t.status === 'Closed').length;
   const active = total - closed;
   const totalEst = tenders.reduce((sum, t) => sum + (Number(t.est_value) || 0), 0);
+  const totalBudget = tenders.reduce((sum, t) => sum + (Number(t.approved_budget) || 0), 0);
   const totalContract = tenders.reduce((sum, t) => sum + (Number(t.contract_value) || 0), 0);
 
   el('#summaryCards').innerHTML = `
@@ -186,6 +205,7 @@ function renderSummary() {
     <div class="card"><div class="num">${active}</div><div class="label">In Progress</div></div>
     <div class="card"><div class="num">${closed}</div><div class="label">Closed</div></div>
     <div class="card"><div class="num">${fmtMoney(totalEst)}</div><div class="label">Est. Value (Total)</div></div>
+    <div class="card"><div class="num">${fmtMoney(totalBudget)}</div><div class="label">Approved Budget (Total)</div></div>
     <div class="card"><div class="num">${fmtMoney(totalContract)}</div><div class="label">Awarded Value (Total)</div></div>
   `;
 }
@@ -203,7 +223,7 @@ function renderTable() {
   const rows = filteredTenders().slice().sort((a, b) => b.id - a.id);
   const tbody = el('#tenderTableBody');
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">No tenders found. Create one to get started.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">No tenders found. Create one to get started.</div></td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((t) => `
@@ -212,16 +232,49 @@ function renderTable() {
       <td>${t.title}</td>
       <td>${t.department || '-'}</td>
       <td>${fmtMoney(t.est_value)}</td>
+      <td>${fmtMoney(t.approved_budget)}</td>
       <td><span class="badge stage-${slug(t.status)}">${t.status}</span></td>
       <td>${fmtDate(t.request_date)}</td>
+      <td>
+        <span class="day-count">
+          <span class="num-days ${t.day_count_running ? 'running' : 'stopped'}">${computeDays(t)}</span>
+          <button class="btn small ${t.day_count_running ? 'toggle-running' : 'toggle-stopped'}" data-toggle-days="${t.id}">${t.day_count_running ? 'Stop' : 'Start'}</button>
+        </span>
+      </td>
       <td>${t.winning_bidder || '-'}</td>
       <td><button class="btn small" data-view="${t.id}">View</button></td>
     </tr>
   `).join('');
 
   tbody.querySelectorAll('tr[data-id]').forEach((tr) => {
-    tr.addEventListener('click', () => openDetail(Number(tr.dataset.id)));
+    tr.addEventListener('click', (e) => {
+      if (e.target.closest('[data-toggle-days]')) return;
+      openDetail(Number(tr.dataset.id));
+    });
   });
+
+  tbody.querySelectorAll('[data-toggle-days]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleDayCount(Number(btn.dataset.toggleDays));
+    });
+  });
+}
+
+function toggleDayCount(id) {
+  const t = findTender(id);
+  if (!t) return;
+  if (t.day_count_running) {
+    const start = new Date(t.day_count_started_at || t.request_date).getTime();
+    const extra = Math.max(0, Math.floor((Date.now() - start) / 86400000));
+    t.day_count_accumulated_days = (t.day_count_accumulated_days || 0) + extra;
+    t.day_count_running = false;
+  } else {
+    t.day_count_started_at = new Date().toISOString();
+    t.day_count_running = true;
+  }
+  saveData();
+  refresh();
 }
 
 function refresh() { renderSummary(); renderTable(); }
@@ -249,10 +302,14 @@ el('#newTenderForm').addEventListener('submit', (e) => {
     department: formData.department || '',
     description: formData.description || '',
     est_value: formData.est_value ? Number(formData.est_value) : null,
+    approved_budget: formData.approved_budget ? Number(formData.approved_budget) : null,
     status: 'Request',
     request_date: formData.request_date || todayStr(),
     publish_date: '', close_date: '', award_date: '', contract_signed_date: '',
     winning_bidder: '', contract_value: null,
+    day_count_running: true,
+    day_count_started_at: new Date().toISOString(),
+    day_count_accumulated_days: 0,
     bidders: [],
     history: [{ status: 'Request', changed_at: nowStr(), note: 'Tender request created' }],
   };
@@ -308,6 +365,14 @@ function renderDetail(id) {
     <div class="detail-grid">
       <div><span class="label">Department</span>${t.department || '-'}</div>
       <div><span class="label">Estimated Value</span>${fmtMoney(t.est_value)}</div>
+      <div><span class="label">Approved Budget</span>${fmtMoney(t.approved_budget)}</div>
+      <div>
+        <span class="label">Days Elapsed (since request)</span>
+        <span class="day-count">
+          <span class="num-days ${t.day_count_running ? 'running' : 'stopped'}">${computeDays(t)} day${computeDays(t) === 1 ? '' : 's'}</span>
+          <button class="btn small ${t.day_count_running ? 'toggle-running' : 'toggle-stopped'}" id="toggleDaysBtn">${t.day_count_running ? 'Stop' : 'Start'}</button>
+        </span>
+      </div>
       <div><span class="label">Request Date</span>${fmtDate(t.request_date)}</div>
       <div><span class="label">Publish Date</span>${fmtDate(t.publish_date)}</div>
       <div><span class="label">Closing Date</span>${fmtDate(t.close_date)}</div>
@@ -336,6 +401,11 @@ function renderDetail(id) {
     <div class="section-title">Status History</div>
     <div id="historyList">${historyItems || '<div class="empty-state">No history yet.</div>'}</div>
   `;
+
+  el('#toggleDaysBtn').addEventListener('click', () => {
+    toggleDayCount(id);
+    renderDetail(id);
+  });
 
   if (next) {
     el('#advanceBtn').addEventListener('click', () => {

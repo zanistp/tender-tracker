@@ -10,6 +10,7 @@ create table if not exists tenders (
   department text,
   description text,
   est_value numeric,
+  approved_budget numeric,
   status text not null default 'Request',
   request_date date,
   publish_date date,
@@ -18,6 +19,9 @@ create table if not exists tenders (
   contract_signed_date date,
   winning_bidder text,
   contract_value numeric,
+  day_count_running boolean not null default true,
+  day_count_started_at timestamptz not null default now(),
+  day_count_accumulated_days integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -56,3 +60,12 @@ create policy "anon full access status_history" on status_history for all using 
 alter publication supabase_realtime add table tenders;
 alter publication supabase_realtime add table bidders;
 alter publication supabase_realtime add table status_history;
+
+-- ---------------------------------------------------------------------------
+-- MIGRATION: run this block only if you already created the tables above
+-- before approved_budget / day-count columns existed. Safe to re-run.
+-- ---------------------------------------------------------------------------
+alter table tenders add column if not exists approved_budget numeric;
+alter table tenders add column if not exists day_count_running boolean not null default true;
+alter table tenders add column if not exists day_count_started_at timestamptz not null default now();
+alter table tenders add column if not exists day_count_accumulated_days integer not null default 0;
