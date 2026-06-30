@@ -210,7 +210,7 @@ async function connect(cfg) {
 }
 
 function subscribeRealtime() {
- sb.channel('tender-tracker-changes')
+ sb.channel('tender-tracker-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tenders' }, () => refresh())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bidders' }, () => { refresh(); if (openDetailId) renderDetail(openDetailId); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'status_history' }, () => { if (openDetailId) renderDetail(openDetailId); })
@@ -349,9 +349,9 @@ async function openDetail(id) {
 async function renderDetail(id) {
   if (openDetailId !== id || !el('#detailModalBackdrop').classList.contains('open')) return;
   const [{ data: t, error: tErr }, { data: bidders }, { data: history }] = await Promise.all([
-   sb.from('tenders').select('*').eq('id', id).single(),
-   sb.from('bidders').select('*').eq('tender_id', id).order('bid_amount', { ascending: true }),
-   sb.from('status_history').select('*').eq('tender_id', id).order('changed_at', { ascending: true }),
+   sb.from('tenders').select('*').eq('id', id).single(),
+   sb.from('bidders').select('*').eq('tender_id', id).order('bid_amount', { ascending: true }),
+   sb.from('status_history').select('*').eq('tender_id', id).order('changed_at', { ascending: true }),
   ]);
   if (tErr || !t) return;
 
