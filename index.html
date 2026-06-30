@@ -162,7 +162,7 @@ tbody tr:hover { background: #f8fafc; }
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/supabase.umd.js"></script>
 <script>
 const CONFIG_KEY = 'tender_tracker_supabase_config';
 const STAGES = ['Request','Tender Prep','Advertised/Published','Bids Received','Evaluation','Award','Contract Signed','Closed'];
@@ -179,7 +179,7 @@ const fmtDate = (v) => (v ? v : '-');
 const slug = (s) => s.replace(/[^a-zA-Z]/g, '');
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
-let supabase = null;
+let sb = null;
 let tenders = [];
 let openDetailId = null;
 const state = { search: '', statusFilter: '' };
@@ -197,8 +197,8 @@ function setConnStatus(text, cls) {
 
 async function connect(cfg) {
   try {
-    supabase = window.supabase.createClient(cfg.url, cfg.key);
-    const { error } = await supabase.from('tenders').select('id').limit(1);
+    sb = window.supabase.createClient(cfg.url, cfg.key);
+    const { error } = await sb.from('tenders').select('id').limit(1);
     if (error) throw error;
     setConnStatus('Connected', 'ok');
     subscribeRealtime();
@@ -210,7 +210,7 @@ async function connect(cfg) {
 }
 
 function subscribeRealtime() {
-  supabase.channel('tender-tracker-changes')
+ sb.channel('tender-tracker-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'tenders' }, () => refresh())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'bidders' }, () => { refresh(); if (openDetailId) renderDetail(openDetailId); })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'status_history' }, () => { if (openDetailId) renderDetail(openDetailId); })
@@ -299,8 +299,8 @@ function renderTable() {
 }
 
 async function refresh() {
-  if (!supabase) return;
-  const { data, error } = await supabase.from('tenders').select('*').order('created_at', { ascending: false });
+  if (!sb) return;
+  const { data, error } = await sb.from('tenders').select('*').order('created_at', { ascending: false });
   if (error) { console.error(error); return; }
   tenders = data;
   renderSummary();
@@ -308,7 +308,7 @@ async function refresh() {
 }
 
 el('#newTenderBtn').addEventListener('click', () => {
-  if (!supabase) { alert('Connect to Supabase first via "Connection Settings".'); return; }
+  if (!sb) { alert('Connect to Supabase first via "Connection Settings".'); return; }
   el('#newTenderForm').reset();
   el('#newModalBackdrop').classList.add('open');
 });
@@ -327,9 +327,9 @@ el('#newTenderForm').addEventListener('submit', async (e) => {
     request_date: formData.request_date || todayStr(),
     status: 'Request',
   };
-  const { data, error } = await supabase.from('tenders').insert(payload).select().single();
+  const { data, error } = await sb.from('tenders').insert(payload).select().single();
   if (error) { alert('Failed to create tender: ' + error.message); return; }
-  await supabase.from('status_history').insert({ tender_id: data.id, status: 'Request', note: 'Tender request created' });
+  await sb.from('status_history').insert({ tender_id: data.id, status: 'Request', note: 'Tender request created' });
   el('#newModalBackdrop').classList.remove('open');
   await refresh();
 });
@@ -349,9 +349,9 @@ async function openDetail(id) {
 async function renderDetail(id) {
   if (openDetailId !== id || !el('#detailModalBackdrop').classList.contains('open')) return;
   const [{ data: t, error: tErr }, { data: bidders }, { data: history }] = await Promise.all([
-    supabase.from('tenders').select('*').eq('id', id).single(),
-    supabase.from('bidders').select('*').eq('tender_id', id).order('bid_amount', { ascending: true }),
-    supabase.from('status_history').select('*').eq('tender_id', id).order('changed_at', { ascending: true }),
+   sb.from('tenders').select('*').eq('id', id).single(),
+   sb.from('bidders').select('*').eq('tender_id', id).order('bid_amount', { ascending: true }),
+   sb.from('status_history').select('*').eq('tender_id', id).order('changed_at', { ascending: true }),
   ]);
   if (tErr || !t) return;
 
@@ -419,16 +419,16 @@ async function renderDetail(id) {
       const update = { status: next, updated_at: new Date().toISOString() };
       const df = DATE_FIELD_BY_STAGE[next];
       if (df) update[df] = todayStr();
-      await supabase.from('tenders').update(update).eq('id', id);
-      await supabase.from('status_history').insert({ tender_id: id, status: next });
+      await sb.from('tenders').update(update).eq('id', id);
+      await sb.from('status_history').insert({ tender_id: id, status: next });
       await refresh();
       await renderDetail(id);
     });
   }
   if (!isClosed) {
     el('#markClosedBtn').addEventListener('click', async () => {
-      await supabase.from('tenders').update({ status: 'Closed', updated_at: new Date().toISOString() }).eq('id', id);
-      await supabase.from('status_history').insert({ tender_id: id, status: 'Closed' });
+      await sb.from('tenders').update({ status: 'Closed', updated_at: new Date().toISOString() }).eq('id', id);
+      await sb.from('status_history').insert({ tender_id: id, status: 'Closed' });
       await refresh();
       await renderDetail(id);
     });
@@ -436,7 +436,7 @@ async function renderDetail(id) {
 
   el('#deleteTenderBtn').addEventListener('click', async () => {
     if (!confirm('Delete this tender permanently?')) return;
-    await supabase.from('tenders').delete().eq('id', id);
+    await sb.from('tenders').delete().eq('id', id);
     openDetailId = null;
     el('#detailModalBackdrop').classList.remove('open');
     await refresh();
@@ -446,7 +446,7 @@ async function renderDetail(id) {
     e.preventDefault();
     const formData = Object.fromEntries(new FormData(e.target).entries());
     if (!formData.name) return;
-    await supabase.from('bidders').insert({
+    await sb.from('bidders').insert({
       tender_id: id,
       name: formData.name,
       bid_amount: formData.bid_amount ? Number(formData.bid_amount) : null,
@@ -460,7 +460,7 @@ async function renderDetail(id) {
       const bidderId = btn.dataset.setWinner;
       const bidder = bidders.find((b) => String(b.id) === bidderId);
       if (!bidder) return;
-      await supabase.from('tenders').update({ winning_bidder: bidder.name, contract_value: bidder.bid_amount }).eq('id', id);
+      await sb.from('tenders').update({ winning_bidder: bidder.name, contract_value: bidder.bid_amount }).eq('id', id);
       await refresh();
       await renderDetail(id);
     });
@@ -468,7 +468,7 @@ async function renderDetail(id) {
 
   document.querySelectorAll('[data-del-bidder]').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      await supabase.from('bidders').delete().eq('id', btn.dataset.delBidder);
+      await sb.from('bidders').delete().eq('id', btn.dataset.delBidder);
       await renderDetail(id);
     });
   });
