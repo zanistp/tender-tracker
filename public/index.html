@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tender Tracker</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="topbar">
+  <h1>Tender Tracker</h1>
+  <button id="newTenderBtn" class="btn primary">+ New Tender Request</button>
+</header>
+
+<main class="layout">
+  <section class="summary" id="summaryCards"></section>
+
+  <section class="table-section">
+    <div class="table-toolbar">
+      <input id="searchInput" type="text" placeholder="Search by tender no, title, department..." />
+      <select id="statusFilter"><option value="">All statuses</option></select>
+    </div>
+    <table id="tenderTable">
+      <thead>
+        <tr>
+          <th>Tender No</th>
+          <th>Title</th>
+          <th>Department</th>
+          <th>Est. Value</th>
+          <th>Status</th>
+          <th>Request Date</th>
+          <th>Winning Bidder</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tenderTableBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<!-- New Tender Modal -->
+<div class="modal-backdrop" id="newModalBackdrop">
+  <div class="modal">
+    <h2>New Tender Request</h2>
+    <form id="newTenderForm">
+      <label>Tender No <input name="tender_no" required /></label>
+      <label>Title <input name="title" required /></label>
+      <label>Department <input name="department" /></label>
+      <label>Description <textarea name="description"></textarea></label>
+      <label>Estimated Value (RM) <input name="est_value" type="number" step="0.01" /></label>
+      <label>Request Date <input name="request_date" type="date" /></label>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="cancelNewTender">Cancel</button>
+        <button type="submit" class="btn primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-backdrop" id="detailModalBackdrop">
+  <div class="modal modal-wide">
+    <button class="close-x" id="closeDetail">&times;</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

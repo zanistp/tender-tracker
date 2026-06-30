@@ -1,0 +1,15 @@
+{
+  "name": "tender-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tender request and progress tracking app",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "express": "^4.19.2"
+  }
+}

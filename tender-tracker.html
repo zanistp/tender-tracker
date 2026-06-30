@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tender Tracker</title>
+<style>
+:root {
+  --primary: #1d4ed8;
+  --primary-dark: #1e3a8a;
+  --bg: #f4f6fb;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --green: #16a34a;
+  --red: #dc2626;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
+.topbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 28px; background: var(--primary-dark); color: white; }
+.topbar h1 { font-size: 20px; margin: 0; }
+.topbar .actions { display: flex; gap: 10px; }
+.btn { border: 1px solid var(--border); background: white; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+.btn.primary { background: var(--primary); color: white; border-color: var(--primary); }
+.btn.primary:hover { background: var(--primary-dark); }
+.btn.danger { color: var(--red); border-color: var(--red); background: white; }
+.btn.ghost { background: transparent; color: white; border-color: rgba(255,255,255,0.5); }
+.layout { padding: 24px 28px; max-width: 1300px; margin: 0 auto; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+.card .num { font-size: 24px; font-weight: 700; }
+.card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.table-section { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.table-toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+.table-toolbar input, .table-toolbar select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; }
+.table-toolbar input { flex: 1; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: #f8fafc; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.badge.stage-Request { background: #e0e7ff; color: #3730a3; }
+.badge.stage-TenderPrep { background: #fef3c7; color: #92400e; }
+.badge.stage-AdvertisedPublished { background: #dbeafe; color: #1e40af; }
+.badge.stage-BidsReceived { background: #f3e8ff; color: #6b21a8; }
+.badge.stage-Evaluation { background: #fee2e2; color: #991b1b; }
+.badge.stage-Award { background: #dcfce7; color: #166534; }
+.badge.stage-ContractSigned { background: #ccfbf1; color: #115e59; }
+.badge.stage-Closed { background: #e5e7eb; color: #374151; }
+.modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); align-items: center; justify-content: center; z-index: 50; }
+.modal-backdrop.open { display: flex; }
+.modal { background: white; border-radius: 10px; padding: 24px; width: 420px; max-height: 88vh; overflow-y: auto; position: relative; }
+.modal-wide { width: 720px; }
+.modal h2 { margin-top: 0; }
+.modal form label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.modal form input, .modal form textarea, .modal form select { display: block; width: 100%; margin-top: 4px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.close-x { position: absolute; top: 14px; right: 14px; border: none; background: none; font-size: 22px; cursor: pointer; color: var(--muted); }
+.stage-track { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0; }
+.stage-pill { padding: 6px 10px; border-radius: 6px; font-size: 12px; background: #f1f5f9; color: var(--muted); border: 1px solid var(--border); }
+.stage-pill.done { background: var(--green); color: white; border-color: var(--green); }
+.stage-pill.current { background: var(--primary); color: white; border-color: var(--primary); font-weight: 700; }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; margin-bottom: 16px; font-size: 14px; }
+.detail-grid div span.label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.section-title { font-size: 15px; font-weight: 700; margin: 18px 0 8px; }
+.bidder-row { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.bidder-row span { flex: 1; }
+.add-bidder-form { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.add-bidder-form input { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+.history-item { font-size: 13px; color: var(--muted); padding: 4px 0; }
+.empty-state { text-align: center; padding: 40px; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <h1>Tender Tracker</h1>
+  <div class="actions">
+    <button id="exportBtn" class="btn ghost">Export Data</button>
+    <button id="importBtn" class="btn ghost">Import Data</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" />
+    <button id="newTenderBtn" class="btn primary">+ New Tender Request</button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="summary" id="summaryCards"></section>
+
+  <section class="table-section">
+    <div class="table-toolbar">
+      <input id="searchInput" type="text" placeholder="Search by tender no, title, department..." />
+      <select id="statusFilter"><option value="">All statuses</option></select>
+    </div>
+    <table id="tenderTable">
+      <thead>
+        <tr>
+          <th>Tender No</th>
+          <th>Title</th>
+          <th>Department</th>
+          <th>Est. Value</th>
+          <th>Status</th>
+          <th>Request Date</th>
+          <th>Winning Bidder</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tenderTableBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<div class="modal-backdrop" id="newModalBackdrop">
+  <div class="modal">
+    <h2>New Tender Request</h2>
+    <form id="newTenderForm">
+      <label>Tender No <input name="tender_no" required /></label>
+      <label>Title <input name="title" required /></label>
+      <label>Department <input name="department" /></label>
+      <label>Description <textarea name="description"></textarea></label>
+      <label>Estimated Value (RM) <input name="est_value" type="number" step="0.01" /></label>
+      <label>Request Date <input name="request_date" type="date" /></label>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="cancelNewTender">Cancel</button>
+        <button type="submit" class="btn primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="detailModalBackdrop">
+  <div class="modal modal-wide">
+    <button class="close-x" id="closeDetail">&times;</button>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'tender_tracker_data_v1';
+const STAGES = ['Request','Tender Prep','Advertised/Published','Bids Received','Evaluation','Award','Contract Signed','Closed'];
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) return JSON.parse(raw);
+  return { tenders: [], nextTenderId: 1, nextBidderId: 1 };
+}
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+let data = loadData();
+const state = { search: '', statusFilter: '' };
+
+const el = (sel) => document.querySelector(sel);
+const fmtMoney = (v) => (v === null || v === undefined || v === '' ? '-' : 'RM ' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const fmtDate = (v) => (v ? v : '-');
+const slug = (s) => s.replace(/[^a-zA-Z]/g, '');
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const nowStr = () => new Date().toISOString().slice(0, 16).replace('T', ' ');
+
+function nextStage(current) {
+  const i = STAGES.indexOf(current);
+  if (i === -1 || i === STAGES.length - 1) return null;
+  return STAGES[i + 1];
+}
+
+function initFilters() {
+  const sel = el('#statusFilter');
+  STAGES.forEach((s) => {
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s;
+    sel.appendChild(opt);
+  });
+}
+
+function renderSummary() {
+  const tenders = data.tenders;
+  const total = tenders.length;
+  const closed = tenders.filter((t) => t.status === 'Closed').length;
+  const active = total - closed;
+  const totalEst = tenders.reduce((sum, t) => sum + (Number(t.est_value) || 0), 0);
+  const totalContract = tenders.reduce((sum, t) => sum + (Number(t.contract_value) || 0), 0);
+
+  el('#summaryCards').innerHTML = `
+    <div class="card"><div class="num">${total}</div><div class="label">Total Tenders</div></div>
+    <div class="card"><div class="num">${active}</div><div class="label">In Progress</div></div>
+    <div class="card"><div class="num">${closed}</div><div class="label">Closed</div></div>
+    <div class="card"><div class="num">${fmtMoney(totalEst)}</div><div class="label">Est. Value (Total)</div></div>
+    <div class="card"><div class="num">${fmtMoney(totalContract)}</div><div class="label">Awarded Value (Total)</div></div>
+  `;
+}
+
+function filteredTenders() {
+  const q = state.search.toLowerCase();
+  return data.tenders.filter((t) => {
+    const matchesSearch = !q || [t.tender_no, t.title, t.department].some((f) => (f || '').toLowerCase().includes(q));
+    const matchesStatus = !state.statusFilter || t.status === state.statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+}
+
+function renderTable() {
+  const rows = filteredTenders().slice().sort((a, b) => b.id - a.id);
+  const tbody = el('#tenderTableBody');
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">No tenders found. Create one to get started.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((t) => `
+    <tr data-id="${t.id}">
+      <td>${t.tender_no}</td>
+      <td>${t.title}</td>
+      <td>${t.department || '-'}</td>
+      <td>${fmtMoney(t.est_value)}</td>
+      <td><span class="badge stage-${slug(t.status)}">${t.status}</span></td>
+      <td>${fmtDate(t.request_date)}</td>
+      <td>${t.winning_bidder || '-'}</td>
+      <td><button class="btn small" data-view="${t.id}">View</button></td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('tr[data-id]').forEach((tr) => {
+    tr.addEventListener('click', () => openDetail(Number(tr.dataset.id)));
+  });
+}
+
+function refresh() { renderSummary(); renderTable(); }
+
+el('#newTenderBtn').addEventListener('click', () => {
+  el('#newTenderForm').reset();
+  el('#newModalBackdrop').classList.add('open');
+});
+el('#cancelNewTender').addEventListener('click', () => el('#newModalBackdrop').classList.remove('open'));
+el('#newModalBackdrop').addEventListener('click', (e) => { if (e.target === el('#newModalBackdrop')) el('#newModalBackdrop').classList.remove('open'); });
+
+el('#newTenderForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const formData = Object.fromEntries(new FormData(e.target).entries());
+  if (!formData.tender_no || !formData.title) return;
+  if (data.tenders.some((t) => t.tender_no === formData.tender_no)) {
+    alert('Tender number already exists');
+    return;
+  }
+  const id = data.nextTenderId++;
+  const tender = {
+    id,
+    tender_no: formData.tender_no,
+    title: formData.title,
+    department: formData.department || '',
+    description: formData.description || '',
+    est_value: formData.est_value ? Number(formData.est_value) : null,
+    status: 'Request',
+    request_date: formData.request_date || todayStr(),
+    publish_date: '', close_date: '', award_date: '', contract_signed_date: '',
+    winning_bidder: '', contract_value: null,
+    bidders: [],
+    history: [{ status: 'Request', changed_at: nowStr(), note: 'Tender request created' }],
+  };
+  data.tenders.push(tender);
+  saveData();
+  el('#newModalBackdrop').classList.remove('open');
+  refresh();
+});
+
+el('#searchInput').addEventListener('input', (e) => { state.search = e.target.value; renderTable(); });
+el('#statusFilter').addEventListener('change', (e) => { state.statusFilter = e.target.value; renderTable(); });
+
+el('#closeDetail').addEventListener('click', () => el('#detailModalBackdrop').classList.remove('open'));
+el('#detailModalBackdrop').addEventListener('click', (e) => { if (e.target === el('#detailModalBackdrop')) el('#detailModalBackdrop').classList.remove('open'); });
+
+function findTender(id) { return data.tenders.find((t) => t.id === id); }
+
+function openDetail(id) {
+  renderDetail(id);
+  el('#detailModalBackdrop').classList.add('open');
+}
+
+function renderDetail(id) {
+  const t = findTender(id);
+  if (!t) return;
+  const currentIdx = STAGES.indexOf(t.status);
+  const stageTrack = STAGES.map((s, i) => {
+    const cls = i < currentIdx ? 'done' : i === currentIdx ? 'current' : '';
+    return `<div class="stage-pill ${cls}">${s}</div>`;
+  }).join('');
+
+  const next = STAGES[currentIdx + 1];
+  const isClosed = t.status === 'Closed';
+
+  const bidderRows = t.bidders.length
+    ? t.bidders.map((b) => `
+        <div class="bidder-row">
+          <span>${b.name}</span>
+          <span>${fmtMoney(b.bid_amount)}</span>
+          <span>${b.status}</span>
+          <button class="btn small" data-set-winner="${b.id}">Set as Winner</button>
+          <button class="btn small danger" data-del-bidder="${b.id}">Remove</button>
+        </div>
+      `).join('')
+    : '<div class="empty-state">No bidders added yet.</div>';
+
+  const historyItems = t.history.map((h) => `<div class="history-item">${h.changed_at} — ${h.status}${h.note ? ' · ' + h.note : ''}</div>`).join('');
+
+  el('#detailContent').innerHTML = `
+    <h2>${t.tender_no} — ${t.title}</h2>
+    <div class="stage-track">${stageTrack}</div>
+
+    <div class="detail-grid">
+      <div><span class="label">Department</span>${t.department || '-'}</div>
+      <div><span class="label">Estimated Value</span>${fmtMoney(t.est_value)}</div>
+      <div><span class="label">Request Date</span>${fmtDate(t.request_date)}</div>
+      <div><span class="label">Publish Date</span>${fmtDate(t.publish_date)}</div>
+      <div><span class="label">Closing Date</span>${fmtDate(t.close_date)}</div>
+      <div><span class="label">Award Date</span>${fmtDate(t.award_date)}</div>
+      <div><span class="label">Contract Signed</span>${fmtDate(t.contract_signed_date)}</div>
+      <div><span class="label">Winning Bidder</span>${t.winning_bidder || '-'}</div>
+      <div><span class="label">Contract Value</span>${fmtMoney(t.contract_value)}</div>
+    </div>
+    ${t.description ? `<div><span class="label">Description</span><p>${t.description}</p></div>` : ''}
+
+    <div class="modal-actions" style="justify-content: flex-start;">
+      ${next ? `<button class="btn primary" id="advanceBtn">Advance to "${next}"</button>` : ''}
+      ${!isClosed ? `<button class="btn" id="markClosedBtn">Mark Closed</button>` : ''}
+      <button class="btn danger" id="deleteTenderBtn">Delete Tender</button>
+    </div>
+
+    <div class="section-title">Bidders</div>
+    <div id="bidderList">${bidderRows}</div>
+    <form class="add-bidder-form" id="addBidderForm">
+      <input name="name" placeholder="Bidder name" required />
+      <input name="bid_amount" type="number" step="0.01" placeholder="Bid amount" />
+      <input name="submitted_date" type="date" />
+      <button type="submit" class="btn">+ Add Bidder</button>
+    </form>
+
+    <div class="section-title">Status History</div>
+    <div id="historyList">${historyItems || '<div class="empty-state">No history yet.</div>'}</div>
+  `;
+
+  if (next) {
+    el('#advanceBtn').addEventListener('click', () => {
+      const dateFieldByStage = {
+        'Advertised/Published': 'publish_date',
+        'Bids Received': 'close_date',
+        'Award': 'award_date',
+        'Contract Signed': 'contract_signed_date',
+      };
+      t.status = next;
+      const df = dateFieldByStage[next];
+      if (df) t[df] = todayStr();
+      t.history.push({ status: next, changed_at: nowStr(), note: '' });
+      saveData();
+      refresh();
+      renderDetail(id);
+    });
+  }
+  if (!isClosed) {
+    el('#markClosedBtn').addEventListener('click', () => {
+      t.status = 'Closed';
+      t.history.push({ status: 'Closed', changed_at: nowStr(), note: '' });
+      saveData();
+      refresh();
+      renderDetail(id);
+    });
+  }
+
+  el('#deleteTenderBtn').addEventListener('click', () => {
+    if (!confirm('Delete this tender permanently?')) return;
+    data.tenders = data.tenders.filter((x) => x.id !== id);
+    saveData();
+    el('#detailModalBackdrop').classList.remove('open');
+    refresh();
+  });
+
+  el('#addBidderForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = Object.fromEntries(new FormData(e.target).entries());
+    if (!formData.name) return;
+    t.bidders.push({
+      id: data.nextBidderId++,
+      name: formData.name,
+      bid_amount: formData.bid_amount ? Number(formData.bid_amount) : null,
+      submitted_date: formData.submitted_date || '',
+      status: 'Submitted',
+    });
+    saveData();
+    renderDetail(id);
+  });
+
+  document.querySelectorAll('[data-set-winner]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const bidderId = Number(btn.dataset.setWinner);
+      const bidder = t.bidders.find((b) => b.id === bidderId);
+      if (!bidder) return;
+      t.winning_bidder = bidder.name;
+      t.contract_value = bidder.bid_amount;
+      saveData();
+      refresh();
+      renderDetail(id);
+    });
+  });
+
+  document.querySelectorAll('[data-del-bidder]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const bidderId = Number(btn.dataset.delBidder);
+      t.bidders = t.bidders.filter((b) => b.id !== bidderId);
+      saveData();
+      renderDetail(id);
+    });
+  });
+}
+
+el('#exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tender-tracker-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+el('#importBtn').addEventListener('click', () => el('#importFile').click());
+el('#importFile').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const imported = JSON.parse(reader.result);
+      if (!imported.tenders) throw new Error('Invalid file');
+      if (!confirm('This will replace all current data with the imported file. Continue?')) return;
+      data = imported;
+      saveData();
+      refresh();
+    } catch (err) {
+      alert('Failed to import: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+initFilters();
+refresh();
+</script>
+</body>
+</html>
