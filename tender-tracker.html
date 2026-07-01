@@ -157,6 +157,10 @@ tbody tr:hover { background: #f8fafc; }
       <label>Procurement Category
         <select name="procurement_category">
           <option value="">-- Select --</option>
+          <option value="Core Supply">Core Supply</option>
+          <option value="Operational Support">Operational Support</option>
+          <option value="Strategic Projects">Strategic Projects</option>
+          <option value="Ispoc">Ispoc</option>
           <option value="Agro Inputs">Agro Inputs</option>
           <option value="Estate Operations">Estate Operations</option>
           <option value="Mill/Processing">Mill/Processing</option>
@@ -185,7 +189,7 @@ tbody tr:hover { background: #f8fafc; }
 <script>
 const STORAGE_KEY = 'tender_tracker_data_v1';
 const STAGES = ['Request','Tender Prep','Advertised/Published','Bids Received','Evaluation','Award','Contract Signed','Closed'];
-const PROC_CATEGORIES = ['Agro Inputs','Estate Operations','Mill/Processing','CAPEX','Logistics & Distribution','Energy & Utilities','Support'];
+const PROC_CATEGORIES = ['Core Supply','Operational Support','Strategic Projects','Ispoc','Agro Inputs','Estate Operations','Mill/Processing','CAPEX','Logistics & Distribution','Energy & Utilities','Support'];
 const COMPANY_CATEGORIES = ['Bumi','Non-Bumi','Multinasional','Foreign Co'];
 const BUDGET_TYPES = ['Capex','Opex'];
 

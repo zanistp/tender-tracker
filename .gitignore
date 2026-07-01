@@ -3,3 +3,6 @@ data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
+
+# Imported masterfile data — contains internal procurement info, never publish
+import/
