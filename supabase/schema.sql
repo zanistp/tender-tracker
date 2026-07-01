@@ -11,6 +11,12 @@ create table if not exists tenders (
   description text,
   est_value numeric,
   approved_budget numeric,
+  budget_type text,
+  executive_in_charge text,
+  cost_saving numeric,
+  cost_avoidance_overrun numeric,
+  company_category text,
+  procurement_category text,
   status text not null default 'Request',
   request_date date,
   publish_date date,
@@ -69,3 +75,9 @@ alter table tenders add column if not exists approved_budget numeric;
 alter table tenders add column if not exists day_count_running boolean not null default true;
 alter table tenders add column if not exists day_count_started_at timestamptz not null default now();
 alter table tenders add column if not exists day_count_accumulated_days integer not null default 0;
+alter table tenders add column if not exists budget_type text;
+alter table tenders add column if not exists executive_in_charge text;
+alter table tenders add column if not exists cost_saving numeric;
+alter table tenders add column if not exists cost_avoidance_overrun numeric;
+alter table tenders add column if not exists company_category text;
+alter table tenders add column if not exists procurement_category text;

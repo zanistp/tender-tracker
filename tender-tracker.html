@@ -107,6 +107,8 @@ tbody tr:hover { background: #f8fafc; }
           <th>Department</th>
           <th>Est. Value</th>
           <th>Approved Budget</th>
+          <th>Proc. Category</th>
+          <th>Company Cat.</th>
           <th>Status</th>
           <th>Request Date</th>
           <th>Days</th>
@@ -129,6 +131,37 @@ tbody tr:hover { background: #f8fafc; }
       <label>Description <textarea name="description"></textarea></label>
       <label>Estimated Value (RM) <input name="est_value" type="number" step="0.01" /></label>
       <label>Approved Budget (RM) <input name="approved_budget" type="number" step="0.01" /></label>
+      <label>Budget Type
+        <select name="budget_type">
+          <option value="">-- Select --</option>
+          <option value="Capex">Capex</option>
+          <option value="Opex">Opex</option>
+        </select>
+      </label>
+      <label>Executive in Charge <input name="executive_in_charge" /></label>
+      <label>Cost Saving (RM) <input name="cost_saving" type="number" step="0.01" /></label>
+      <label>Cost Avoidance / Overrun (RM) <input name="cost_avoidance_overrun" type="number" step="0.01" /></label>
+      <label>Company Category
+        <select name="company_category">
+          <option value="">-- Select --</option>
+          <option value="Bumi">Bumi</option>
+          <option value="Non-Bumi">Non-Bumi</option>
+          <option value="Multinasional">Multinasional</option>
+          <option value="Foreign Co">Foreign Co</option>
+        </select>
+      </label>
+      <label>Procurement Category
+        <select name="procurement_category">
+          <option value="">-- Select --</option>
+          <option value="Agro Inputs">Agro Inputs</option>
+          <option value="Estate Operations">Estate Operations</option>
+          <option value="Mill/Processing">Mill/Processing</option>
+          <option value="CAPEX">CAPEX</option>
+          <option value="Logistics & Distribution">Logistics &amp; Distribution</option>
+          <option value="Energy & Utilities">Energy &amp; Utilities</option>
+          <option value="Support">Support</option>
+        </select>
+      </label>
       <label>Request Date <input name="request_date" type="date" /></label>
       <div class="modal-actions">
         <button type="button" class="btn" id="cancelNewTender">Cancel</button>
@@ -199,6 +232,7 @@ function renderSummary() {
   const totalEst = tenders.reduce((sum, t) => sum + (Number(t.est_value) || 0), 0);
   const totalBudget = tenders.reduce((sum, t) => sum + (Number(t.approved_budget) || 0), 0);
   const totalContract = tenders.reduce((sum, t) => sum + (Number(t.contract_value) || 0), 0);
+  const totalSaving = tenders.reduce((sum, t) => sum + (Number(t.cost_saving) || 0), 0);
 
   el('#summaryCards').innerHTML = `
     <div class="card"><div class="num">${total}</div><div class="label">Total Tenders</div></div>
@@ -207,6 +241,7 @@ function renderSummary() {
     <div class="card"><div class="num">${fmtMoney(totalEst)}</div><div class="label">Est. Value (Total)</div></div>
     <div class="card"><div class="num">${fmtMoney(totalBudget)}</div><div class="label">Approved Budget (Total)</div></div>
     <div class="card"><div class="num">${fmtMoney(totalContract)}</div><div class="label">Awarded Value (Total)</div></div>
+    <div class="card"><div class="num">${fmtMoney(totalSaving)}</div><div class="label">Cost Saving (Total)</div></div>
   `;
 }
 
@@ -223,7 +258,7 @@ function renderTable() {
   const rows = filteredTenders().slice().sort((a, b) => b.id - a.id);
   const tbody = el('#tenderTableBody');
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">No tenders found. Create one to get started.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state">No tenders found. Create one to get started.</div></td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((t) => `
@@ -233,6 +268,8 @@ function renderTable() {
       <td>${t.department || '-'}</td>
       <td>${fmtMoney(t.est_value)}</td>
       <td>${fmtMoney(t.approved_budget)}</td>
+      <td>${t.procurement_category || '-'}</td>
+      <td>${t.company_category || '-'}</td>
       <td><span class="badge stage-${slug(t.status)}">${t.status}</span></td>
       <td>${fmtDate(t.request_date)}</td>
       <td>
@@ -303,6 +340,12 @@ el('#newTenderForm').addEventListener('submit', (e) => {
     description: formData.description || '',
     est_value: formData.est_value ? Number(formData.est_value) : null,
     approved_budget: formData.approved_budget ? Number(formData.approved_budget) : null,
+    budget_type: formData.budget_type || '',
+    executive_in_charge: formData.executive_in_charge || '',
+    cost_saving: formData.cost_saving ? Number(formData.cost_saving) : null,
+    cost_avoidance_overrun: formData.cost_avoidance_overrun ? Number(formData.cost_avoidance_overrun) : null,
+    company_category: formData.company_category || '',
+    procurement_category: formData.procurement_category || '',
     status: 'Request',
     request_date: formData.request_date || todayStr(),
     publish_date: '', close_date: '', award_date: '', contract_signed_date: '',
@@ -364,8 +407,14 @@ function renderDetail(id) {
 
     <div class="detail-grid">
       <div><span class="label">Department</span>${t.department || '-'}</div>
+      <div><span class="label">Executive in Charge</span>${t.executive_in_charge || '-'}</div>
+      <div><span class="label">Procurement Category</span>${t.procurement_category || '-'}</div>
+      <div><span class="label">Company Category</span>${t.company_category || '-'}</div>
       <div><span class="label">Estimated Value</span>${fmtMoney(t.est_value)}</div>
       <div><span class="label">Approved Budget</span>${fmtMoney(t.approved_budget)}</div>
+      <div><span class="label">Budget Type</span>${t.budget_type || '-'}</div>
+      <div><span class="label">Cost Saving</span>${fmtMoney(t.cost_saving)}</div>
+      <div><span class="label">Cost Avoidance / Overrun</span>${fmtMoney(t.cost_avoidance_overrun)}</div>
       <div>
         <span class="label">Days Elapsed (since request)</span>
         <span class="day-count">
