@@ -98,6 +98,10 @@ tbody tr:hover { background: #f8fafc; }
     <div class="table-toolbar">
       <input id="searchInput" type="text" placeholder="Search by tender no, title, department..." />
       <select id="statusFilter"><option value="">All statuses</option></select>
+      <select id="procFilter"><option value="">All proc. categories</option></select>
+      <select id="companyFilter"><option value="">All company categories</option></select>
+      <select id="budgetFilter"><option value="">All budget types</option></select>
+      <button id="clearFilters" class="btn">Clear</button>
     </div>
     <table id="tenderTable">
       <thead>
@@ -181,6 +185,9 @@ tbody tr:hover { background: #f8fafc; }
 <script>
 const STORAGE_KEY = 'tender_tracker_data_v1';
 const STAGES = ['Request','Tender Prep','Advertised/Published','Bids Received','Evaluation','Award','Contract Signed','Closed'];
+const PROC_CATEGORIES = ['Agro Inputs','Estate Operations','Mill/Processing','CAPEX','Logistics & Distribution','Energy & Utilities','Support'];
+const COMPANY_CATEGORIES = ['Bumi','Non-Bumi','Multinasional','Foreign Co'];
+const BUDGET_TYPES = ['Capex','Opex'];
 
 function loadData() {
   const raw = localStorage.getItem(STORAGE_KEY);
@@ -190,7 +197,7 @@ function loadData() {
 function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 
 let data = loadData();
-const state = { search: '', statusFilter: '' };
+const state = { search: '', statusFilter: '', procFilter: '', companyFilter: '', budgetFilter: '' };
 
 const el = (sel) => document.querySelector(sel);
 const fmtMoney = (v) => (v === null || v === undefined || v === '' ? '-' : 'RM ' + Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
@@ -214,14 +221,20 @@ function nextStage(current) {
   return STAGES[i + 1];
 }
 
-function initFilters() {
-  const sel = el('#statusFilter');
-  STAGES.forEach((s) => {
+function populateSelect(sel, values) {
+  values.forEach((v) => {
     const opt = document.createElement('option');
-    opt.value = s;
-    opt.textContent = s;
+    opt.value = v;
+    opt.textContent = v;
     sel.appendChild(opt);
   });
+}
+
+function initFilters() {
+  populateSelect(el('#statusFilter'), STAGES);
+  populateSelect(el('#procFilter'), PROC_CATEGORIES);
+  populateSelect(el('#companyFilter'), COMPANY_CATEGORIES);
+  populateSelect(el('#budgetFilter'), BUDGET_TYPES);
 }
 
 function renderSummary() {
@@ -250,7 +263,10 @@ function filteredTenders() {
   return data.tenders.filter((t) => {
     const matchesSearch = !q || [t.tender_no, t.title, t.department].some((f) => (f || '').toLowerCase().includes(q));
     const matchesStatus = !state.statusFilter || t.status === state.statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesProc = !state.procFilter || t.procurement_category === state.procFilter;
+    const matchesCompany = !state.companyFilter || t.company_category === state.companyFilter;
+    const matchesBudget = !state.budgetFilter || t.budget_type === state.budgetFilter;
+    return matchesSearch && matchesStatus && matchesProc && matchesCompany && matchesBudget;
   });
 }
 
@@ -364,6 +380,15 @@ el('#newTenderForm').addEventListener('submit', (e) => {
 
 el('#searchInput').addEventListener('input', (e) => { state.search = e.target.value; renderTable(); });
 el('#statusFilter').addEventListener('change', (e) => { state.statusFilter = e.target.value; renderTable(); });
+el('#procFilter').addEventListener('change', (e) => { state.procFilter = e.target.value; renderTable(); });
+el('#companyFilter').addEventListener('change', (e) => { state.companyFilter = e.target.value; renderTable(); });
+el('#budgetFilter').addEventListener('change', (e) => { state.budgetFilter = e.target.value; renderTable(); });
+el('#clearFilters').addEventListener('click', () => {
+  state.search = ''; state.statusFilter = ''; state.procFilter = ''; state.companyFilter = ''; state.budgetFilter = '';
+  el('#searchInput').value = '';
+  el('#statusFilter').value = ''; el('#procFilter').value = ''; el('#companyFilter').value = ''; el('#budgetFilter').value = '';
+  renderTable();
+});
 
 el('#closeDetail').addEventListener('click', () => el('#detailModalBackdrop').classList.remove('open'));
 el('#detailModalBackdrop').addEventListener('click', (e) => { if (e.target === el('#detailModalBackdrop')) el('#detailModalBackdrop').classList.remove('open'); });
